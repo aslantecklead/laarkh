@@ -1,0 +1,39 @@
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DOWNLOAD_DIR=/app/downloads
+      - AUDIO_SAMPLE_RATE=16000
+      - AUDIO_BITRATE=8k
+      - AUDIO_CHANNELS=1
+      - MAX_AUDIO_DURATION=600
+      - MAX_CONCURRENT_DOWNLOADS=3
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+    depends_on:
+      - redis
+    volumes:
+      - ./downloads:/app/downloads
+    networks:
+      - edtech-net
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    networks:
+      - edtech-net
+
+volumes:
+  redis_data:
+
+networks:
+  edtech-net:
+    driver: bridge
