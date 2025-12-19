@@ -1,38 +1,26 @@
 import yt_dlp
 from pathlib import Path
 from typing import Dict, Any
+import requests
+import tempfile
+import os
 
-from app.config import DOWNLOAD_DIR, AUDIO_CHANNELS, AUDIO_SAMPLE_RATE, AUDIO_BITRATE, MAX_AUDIO_DURATION
+from app.config import AUDIO_CHANNELS, AUDIO_SAMPLE_RATE, AUDIO_BITRATE, MAX_AUDIO_DURATION
 from app.core.exceptions import VideoTooLongError
 
 
-class AudioDownloader:
+class SubtitleGenerator:
     def __init__(self):
-        self.download_dir = DOWNLOAD_DIR
-        self.download_dir.mkdir(parents=True, exist_ok=True)
+        pass
 
-    async def download_audio(self, url: str) -> Dict[str, Any]:        
+    async def generate_subtitles(self, url: str, video_id: str) -> Dict[str, Any]:        
         ydl_opts = {
             "max_duration": MAX_AUDIO_DURATION,
             "format": "bestaudio[ext=webm]/bestaudio/best",
-            "outtmpl": str(self.download_dir / "%(id)s.%(ext)s"),
             "quiet": True,
             "no_warnings": True,
             "noplaylist": True,
             "concurrent_fragment_downloads": 10,
-            "postprocessors": [{
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "opus",
-            }],
-            "postprocessor_args": [
-                "-vn",
-                "-ac", str(AUDIO_CHANNELS),
-                "-ar", str(AUDIO_SAMPLE_RATE),
-                "-b:a", "8k",
-                "-application", "lowdelay",
-                "-vbr", "on",
-                "-compression_level", "10",
-            ],
         }
 
         try:
@@ -44,28 +32,31 @@ class AudioDownloader:
                 raise VideoTooLongError(duration, MAX_AUDIO_DURATION)
                 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-
-            video_id = info.get("id")
-            opus_path = self.download_dir / f"{video_id}.opus"
-            
-            if not opus_path.exists():
-                raise RuntimeError("Opus output not found. Проверь, что установлен ffmpeg и что postprocessor отработал.")
+                result = ydl.extract_info(url, download=False)
+                audio_stream = next(s for s in result['formats'] if s.get('format_id') == '251')
+                
+                from app.infrastructure.asr.factory import get_asr_engine
+                asr_engine = get_asr_engine()
+                
+                response = requests.get(audio_stream['url'], stream=True)
+                response.raise_for_status()
+                
+                with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                    temp_path = f.name
+                
+                try:
+                    transcription = asr_engine.transcribe(temp_path)
+                finally:
+                    os.unlink(temp_path)
 
             return {
-                "id": info.get("id"),
+                "video_id": video_id,
                 "title": info.get("title"),
                 "uploader": info.get("uploader"),
                 "duration": info.get("duration"),
-                "filepath": str(opus_path),
-                "filename": opus_path.name,
-                "target": {
-                    "codec": "opus",
-                    "channels": AUDIO_CHANNELS,
-                    "sample_rate": AUDIO_SAMPLE_RATE,
-                    "bitrate": "8k",
-                    "application": "lowdelay",
-                },
+                "subtitles": transcription
             }
 
         except yt_dlp.utils.DownloadError as e:

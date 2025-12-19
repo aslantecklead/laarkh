@@ -6,7 +6,7 @@ import subprocess
 import yt_dlp
 from fastapi import HTTPException
 
-from app.config import DOWNLOAD_DIR, AUDIO_CHANNELS, AUDIO_SAMPLE_RATE, AUDIO_BITRATE, MAX_AUDIO_DURATION
+from app.config import AUDIO_CHANNELS, AUDIO_SAMPLE_RATE, AUDIO_BITRATE, MAX_AUDIO_DURATION
 
 
 def extract_video_id(url: str) -> str | None:

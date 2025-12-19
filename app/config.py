@@ -5,8 +5,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent  # .../app
-DOWNLOAD_DIR = Path(os.getenv("DOWNLOAD_DIR"))
-DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 AUDIO_SAMPLE_RATE = int(os.getenv("AUDIO_SAMPLE_RATE"))
 AUDIO_BITRATE = os.getenv("AUDIO_BITRATE")
@@ -18,3 +16,4 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 REDIS_HOST = os.getenv("REDIS_HOST")
 REDIS_PORT = int(os.getenv("REDIS_PORT"))
 REDIS_DB = int(os.getenv("REDIS_DB"))
+ASR_MODEL_SIZE = os.getenv("ASR_MODEL_SIZE", "small")

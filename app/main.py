@@ -1,20 +1,16 @@
 from fastapi import FastAPI
 
-from app.api.download import router
-from app.infrastructure.worker import AudioDownloader
-from app.config import DOWNLOAD_DIR
+from app.api.subtitles import router as subtitles_router
 
-app = FastAPI(title="MVP YouTube Audio Downloader (ASR-optimized)")
+app = FastAPI(title="MVP YouTube Subtitles Generator")
 
-audio_downloader = AudioDownloader()
-
-app.include_router(router)
+app.include_router(subtitles_router)
 
 @app.get("/health")
 def health():
     return {
         "ok": True,
-        "download_dir": str(DOWNLOAD_DIR),
+        "service": "subtitles_generator",
         "target_audio": {
             "codec": "opus",
             "channels": 1,
