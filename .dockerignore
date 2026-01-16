@@ -1,42 +1,60 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.ipynb_checkpoints/
-
-# Virtualenv
-.venv/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
 venv/
-
-# Git
-.git/
-.gitignore
+.venv/
 
 # IDE
-.idea/
 .vscode/
+.idea/
+*.swp
+*.swo
 
-# OS junk
-.DS_Store
-Thumbs.db
-
-# Logs
+# Логи
 *.log
+logs/
 
-# Build artifacts
+# Тесты
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# Распределение
 dist/
 build/
 *.egg-info/
 
-# Caches / models / data (подстрой под себя!)
-.cache/
-**/.cache/
-models/
-data/
-downloads/
+# Временные файлы
+*.tmp
+*.temp
 tmp/
-whisper_cache/
+temp/
+
+# Данные
+*.db
+*.sqlite3
+
+# Конфиги
+.env
+.env.local
+docker-compose.override.yml
+
+# Документация
+docs/_build/
+
+# Игнорируем всё кроме необходимого
+*
+
+# Исключаем
+!app/
+!requirements_cpu.txt
+!Dockerfile
+!docker-compose.yml
+!Makefile
+!.dockerignore
+!README.md

@@ -1,18 +1,17 @@
-# syntax=docker/dockerfile:1.7
-FROM python:3.12.3-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends ffmpeg \
- && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir -r requirements.txt
+COPY requirements_cpu.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements_cpu.txt
 
 COPY . .
 
 EXPOSE 8000
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

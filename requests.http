@@ -1,8 +1,8 @@
 ### 2️⃣ Сохраняем video_id в переменную (для VS Code REST Client)
-@video_id = t8yvkk-cUwo
+@video_id = wDjeBNv6ip0
 
 ### 1️⃣ POST — запустить генерацию субтитров
-POST http://localhost:8000/api/subtitles
+POST http://127.0.0.1:8000/api/subtitles
 Content-Type: application/json
 
 {

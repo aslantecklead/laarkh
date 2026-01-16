@@ -1,23 +1,51 @@
-/.venv/
+# Игнорируем всё
+*
+
+# Исключаем только необходимое
+!app/
+!requirements_cpu.txt
+!requirements.txt
+!Dockerfile
+!docker-compose.yml
+!.dockerignore
+
+# Исключаем файлы приложения
+!pyproject.toml
+!README.md
+
+# Игнорируем временные файлы и кэши
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
 .Python
 env/
+venv/
+.venv/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Логи
+*.log
+logs/
+
+# Тесты и покрытие
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.tox/
+
+# Распределение
 dist/
 build/
 *.egg-info/
-.coverage
-htmlcov/
-.uv/
-.DS_Store
-*.log
-uvicorn.log
-downloads/
-*.env
-.env
-*.swp
-*.swo
-*~
-/downloads/

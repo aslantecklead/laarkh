@@ -1,48 +1,62 @@
 services:
-#  app:
-#    build: .
-#    ports:
-#      - "8000:8000"
-#    environment:
-#      - HOST=0.0.0.0
-#      - PORT=8000
-#      - RELOAD=false
-#      - LOG_LEVEL=info
-#
-#      - REDIS_HOST=redis
-#      - REDIS_PORT=6379
-#      - REDIS_DB=0
-#      # - REDIS_URL=redis://redis:6379/0
-#
-#      - AUDIO_SAMPLE_RATE=16000
-#      - AUDIO_BITRATE=8k
-#      - AUDIO_CHANNELS=1
-#      - MAX_AUDIO_DURATION=600
-#      - MAX_CONCURRENT_DOWNLOADS=3
-#
-#    depends_on:
-#      - redis
-#
-#    volumes:
-#      - whisper_cache:/root/.cache/whisper
-#
-#    networks:
-#      - edtech-net
+  app:
+    build: .
+    container_name: linguada-app
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - LOG_LEVEL=info
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - MAX_AUDIO_DURATION=1800
+      - AUDIO_SAMPLE_RATE=16000
+      - HF_HOME=/app/.cache/huggingface
+      - TRANSFORMERS_CACHE=/app/.cache/huggingface
+    volumes:
+      - ./linguada_models_cache:/root/.cache/linguada
+      - redis_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; r = requests.get('http://localhost:8000/health', timeout=5); exit(0 if r.status_code == 200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - linguada-net
 
   redis:
     image: redis:7-alpine
+    container_name: linguada-redis
     ports:
       - "6379:6379"
-    command: redis-server --save 60 1 --loglevel warning
+    command: >
+      redis-server
+      --save 60 1
+      --loglevel warning
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --timeout 300
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
     networks:
-      - edtech-net
+      - linguada-net
 
 volumes:
   redis_data:
-  whisper_cache:
 
 networks:
-  edtech-net:
-    driver: bridge
+  linguada-net:
