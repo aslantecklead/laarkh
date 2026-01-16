@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtualenv
+.venv/
+venv/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Caches / models / data (подстрой под себя!)
+.cache/
+**/.cache/
+models/
+data/
+downloads/
+tmp/
+whisper_cache/
