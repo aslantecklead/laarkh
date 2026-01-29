@@ -4,6 +4,8 @@ services:
     container_name: linguada-app
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - HOST=0.0.0.0
       - PORT=8000
@@ -15,8 +17,10 @@ services:
       - AUDIO_SAMPLE_RATE=16000
       - HF_HOME=/app/.cache/huggingface
       - TRANSFORMERS_CACHE=/app/.cache/huggingface
+      - YTDLP_COOKIES=/app/cookies/youtube.txt
     volumes:
       - ./linguada_models_cache:/root/.cache/linguada
+      - ./cookies:/app/cookies:ro
       - redis_data:/data
     depends_on:
       redis:

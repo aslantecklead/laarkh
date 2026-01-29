@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from app.infrastructure.asr.factory import initialize_asr
 from app.api.subtitles import router as subtitles_router
+from app.api.cookies import router as cookies_router
 import logging
 import threading
 
@@ -15,6 +16,7 @@ app = FastAPI(
 
 # Включаем роутер
 app.include_router(subtitles_router)
+app.include_router(cookies_router)
 
 
 @app.on_event("startup")

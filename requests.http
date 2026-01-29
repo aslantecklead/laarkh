@@ -1,14 +1,14 @@
 ### 2️⃣ Сохраняем video_id в переменную (для VS Code REST Client)
-@video_id = wDjeBNv6ip0
+@video_id = IOuG6WSh_-g
 
 ### 1️⃣ POST — запустить генерацию субтитров
-POST http://127.0.0.1:8000/api/subtitles
+POST http://localhost:8000/api/subtitles
 Content-Type: application/json
 
 {
   "url": "https://www.youtube.com/watch?v={{video_id}}"
 }
-###
+
 
 ### 3️⃣ GET — проверить статус обработки
 GET http://localhost:8000/api/subtitles/{{video_id}}/status

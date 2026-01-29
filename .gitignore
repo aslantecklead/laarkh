@@ -2,7 +2,7 @@
 *
 
 # Исключаем только необходимое
-!app/
+
 !requirements_cpu.txt
 !requirements.txt
 !Dockerfile
