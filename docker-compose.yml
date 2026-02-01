@@ -13,6 +13,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
+      - MONGO_URI=mongodb://admin:admin@mongodb:27017/linguada?authSource=admin
+      - MONGO_DB=linguada
       - MAX_AUDIO_DURATION=1800
       - AUDIO_SAMPLE_RATE=16000
       - HF_HOME=/app/.cache/huggingface
@@ -25,6 +27,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      mongodb:
+        condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; r = requests.get('http://localhost:8000/health', timeout=5); exit(0 if r.status_code == 200 else 1)"]
       interval: 30s
@@ -59,8 +63,43 @@ services:
     networks:
       - linguada-net
 
+  mongodb:
+    image: mongo:7
+    container_name: linguada-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin
+      - MONGO_INITDB_DATABASE=linguada
+    volumes:
+      - mongo_data:/data/db
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./docker/mongo-schema-init.js:/docker-entrypoint-initdb.d/mongo-schema-init.js:ro
+    restart: unless-stopped
+    networks:
+      - linguada-net
+
+  mongo-express:
+    image: mongo-express:1.0.2-20
+    container_name: linguada-mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=admin
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    networks:
+      - linguada-net
+
 volumes:
   redis_data:
+  mongo_data:
 
 networks:
   linguada-net:

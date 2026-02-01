@@ -16,8 +16,8 @@ _memory_lock = threading.Lock()
 _redis_unavailable_logged = False
 
 # Значения по умолчанию
-DEFAULT_RATE_LIMIT_MAX_REQUESTS = 5
-DEFAULT_RATE_LIMIT_WINDOW = 60
+DEFAULT_RATE_LIMIT_MAX_REQUESTS = 50
+DEFAULT_RATE_LIMIT_WINDOW = 3600
 
 def get_env_variable(var_name: str, default: any = None):
     """Получить переменную окружения, преобразовав ее в нужный тип"""
