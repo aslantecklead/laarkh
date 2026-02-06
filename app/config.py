@@ -16,6 +16,13 @@ def getenv_int(name: str, default: int) -> int:
 def getenv_str(name: str, default: str | None = None) -> str | None:
     return os.getenv(name, default)
 
+def getenv_bool(name: str, default: bool) -> bool:
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.strip().lower() in ("1", "true", "yes", "on")
+
+
 # --- Audio ---
 AUDIO_SAMPLE_RATE = getenv_int("AUDIO_SAMPLE_RATE", 16000)
 AUDIO_BITRATE = getenv_str("AUDIO_BITRATE", "8k")
@@ -31,5 +38,16 @@ REDIS_HOST = getenv_str("REDIS_HOST", "redis")
 REDIS_PORT = getenv_int("REDIS_PORT", 6379)
 REDIS_DB = getenv_int("REDIS_DB", 0)
 
+
+# --- Video catalog ---
+VIDEO_CATALOG_COLLECTION = getenv_str("VIDEO_CATALOG_COLLECTION", "videos")
+VIDEO_CATALOG_CACHE_KEY = getenv_str("VIDEO_CATALOG_CACHE_KEY", "videos:all")
+VIDEO_CATALOG_CACHE_TTL_SEC = getenv_int("VIDEO_CATALOG_CACHE_TTL_SEC", 600)
+
 # --- ASR ---
 ASR_MODEL_SIZE = getenv_str("ASR_MODEL_SIZE", "base")
+
+# --- Translation ---
+TRANSLATION_DEFAULT_SOURCE_LANGUAGE = getenv_str("TRANSLATION_SOURCE_LANGUAGE", "en")
+TRANSLATION_DEFAULT_TARGET_LANGUAGE = getenv_str("TRANSLATION_TARGET_LANGUAGE", "ru")
+TRANSLATION_AUTO_DOWNLOAD = getenv_bool("TRANSLATION_AUTO_DOWNLOAD", True)

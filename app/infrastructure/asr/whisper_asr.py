@@ -76,7 +76,6 @@ def preload_models():
     # Модели для предварительной загрузки
     models_to_preload = [
         ("tiny", "int8", 2),
-        ("base", "int8", 2),
     ]
 
     for model_size, compute_type, workers in models_to_preload:

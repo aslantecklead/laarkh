@@ -35,3 +35,4 @@ certifi==2025.11.12
 idna==3.11
 charset-normalizer==3.4.4
 urllib3==2.6.2
+argostranslate==1.9.1

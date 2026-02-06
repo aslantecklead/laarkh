@@ -1,8 +1,11 @@
 # app/main.py
 from fastapi import FastAPI
 from app.infrastructure.asr.factory import initialize_asr
+from app.infrastructure.cache.video_catalog_refresher import start_video_catalog_refresher
 from app.api.subtitles import router as subtitles_router
 from app.api.cookies import router as cookies_router
+from app.api.activity import router as activity_router
+from app.api.videos import router as videos_router
 import logging
 import threading
 
@@ -17,6 +20,8 @@ app = FastAPI(
 # Включаем роутер
 app.include_router(subtitles_router)
 app.include_router(cookies_router)
+app.include_router(activity_router)
+app.include_router(videos_router)
 
 
 @app.on_event("startup")
@@ -36,6 +41,12 @@ async def startup_event():
     thread = threading.Thread(target=preload_models_background, daemon=True)
     thread.start()
     logger.info("Model preloading started in background...")
+
+    try:
+        start_video_catalog_refresher()
+        logger.info("Video catalog cache refresher started")
+    except Exception as e:
+        logger.error(f"Failed to start video catalog cache refresher: {e}")
 
 
 @app.get("/")
