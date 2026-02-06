@@ -12,6 +12,12 @@
 # Исключаем файлы приложения
 !pyproject.toml
 !README.md
+!API.md
+!app/
+!app/**
+!docs/
+!docs/**
+!makefile.mk
 
 # Игнорируем временные файлы и кэши
 __pycache__/
