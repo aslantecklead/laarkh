@@ -67,18 +67,18 @@ def rate_limit(max_requests=None, window=None, by_ip=True):
                 key = f"rate_limit:{video_id}"
 
             try:
-                current = redis_client.get(key)
+                current = await redis_client.get(key)
 
                 if current is None:
                     # Set initial counter with expiration
-                    redis_client.setex(key, actual_window, 1)
+                    await redis_client.setex(key, actual_window, 1)
                 elif int(current) >= actual_max_requests:
                     return JSONResponse(
                         status_code=429,
                         content={"error": "Rate limit exceeded. Try again later."}
                     )
                 else:
-                    redis_client.incr(key)
+                    await redis_client.incr(key)
             except RedisConnectionError:
                 if not _redis_unavailable_logged:
                     logging.warning("Redis unavailable; falling back to in-memory rate limiting.")

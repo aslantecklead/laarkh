@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 import uuid
@@ -11,13 +12,13 @@ import shutil
 
 import yt_dlp
 
-from app.config import MAX_AUDIO_DURATION
+from app.config import MAX_AUDIO_DURATION, YTDLP_MAX_CONCURRENT
 from app.core.exceptions import VideoTooLongError
 
 logger = logging.getLogger("linguada.worker")
 
-# Глобальная блокировка для yt-dlp
-_YTDLP_LOCK = threading.Lock()
+# Глобальный семафор для yt-dlp (ограниченный параллелизм)
+_YTDLP_SEMAPHORE = threading.Semaphore(max(1, YTDLP_MAX_CONCURRENT))
 
 
 def _setup_logging_if_needed() -> None:
@@ -108,6 +109,9 @@ class SubtitleGenerator:
         self._asr_lock = threading.Lock()
 
     async def generate_subtitles(self, url: str, video_id: str) -> Dict[str, Any]:
+        return await asyncio.to_thread(self._generate_subtitles_sync, url, video_id)
+
+    def _generate_subtitles_sync(self, url: str, video_id: str) -> Dict[str, Any]:
         req_id = str(uuid.uuid4())[:8]
         t0 = time.time()
         logger.info(f"{_fmt_req(req_id)} start generate_subtitles video_id={video_id} url={url}")
@@ -157,9 +161,12 @@ class SubtitleGenerator:
         logger.info(f"{_fmt_req(req_id)} extracting info...")
         t = time.time()
 
-        with _YTDLP_LOCK:
+        _YTDLP_SEMAPHORE.acquire()
+        try:
             with yt_dlp.YoutubeDL({**ydl_opts, "skip_download": True}) as ydl:
                 info = ydl.extract_info(url, download=False)
+        finally:
+            _YTDLP_SEMAPHORE.release()
 
         logger.info(f"{_fmt_req(req_id)} extracted info in {time.time() - t:.2f}s "
                     f"title={info.get('title', '')[:50]}...")
@@ -186,9 +193,12 @@ class SubtitleGenerator:
         logger.info(f"{_fmt_req(req_id)} downloading audio via yt-dlp to {tmp_dir} ...")
         t = time.time()
 
-        with _YTDLP_LOCK:
+        _YTDLP_SEMAPHORE.acquire()
+        try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
+        finally:
+            _YTDLP_SEMAPHORE.release()
 
         download_time = time.time() - t
         logger.info(f"{_fmt_req(req_id)} yt-dlp download done in {download_time:.2f}s id={info.get('id')}")

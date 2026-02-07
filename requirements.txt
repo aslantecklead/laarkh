@@ -15,7 +15,8 @@ yt-dlp>=2025.12.8
 
 # Redis и кэширование
 redis==7.1.0
-pymongo==4.8.0
+motor==3.6.0
+rq==1.16.2
 python-dotenv==1.2.1
 
 # HTTP клиенты
@@ -35,4 +36,3 @@ certifi==2025.11.12
 idna==3.11
 charset-normalizer==3.4.4
 urllib3==2.6.2
-argostranslate==1.9.1

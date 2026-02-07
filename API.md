@@ -56,6 +56,51 @@ Response `200`
 }
 ```
 
+### `GET /api/updates/latest`
+Fetch the latest active update notice. If a critical update is active, it is returned even if previously seen.
+
+Query params
+- `app_version` (optional): client version to compare against `version` / `min_app_version`.
+- `device_id` (optional): used to skip info updates that were already acknowledged.
+- `user_id` (optional): same as `device_id` but for authenticated clients.
+
+Response `200`
+```json
+{
+  "ok": true,
+  "update": {
+    "id": "...",
+    "version": "2.0.3",
+    "min_app_version": "2.0.0",
+    "message": "Update available",
+    "severity": "info",
+    "telegram_url": "https://t.me/...",
+    "is_active": true,
+    "force": false,
+    "starts_at": "2026-02-07T08:00:00+00:00",
+    "ends_at": null,
+    "created_at": "2026-02-07T08:00:00+00:00"
+  }
+}
+```
+
+### `POST /api/updates/ack`
+Mark an info update as acknowledged by a device or user.
+
+Request body (JSON)
+```json
+{
+  "update_id": "app_update_id",
+  "device_id": "device-123",
+  "user_id": "optional"
+}
+```
+
+Response `200`
+```json
+{ "ok": true }
+```
+
 ### `POST /api/subtitles`
 Enqueue subtitle generation for a YouTube video.
 
@@ -173,102 +218,17 @@ Responses
 ```
 
 
-### `POST /api/subtitles/{video_id}/translation`
-Enqueue translation for already generated subtitles.
-
-Request body (JSON)
-```json
-{
-  "target_language": "ru",
-  "source_language": "en"
-}
-```
-- `target_language` (optional, default `ru`): target language code.
-- `source_language` (optional): source language code. If omitted, it uses the subtitle language.
-
-Responses
-- `200` when translation already cached:
-```json
-{ "ok": true, "video_id": "VIDEO_ID", "target_language": "ru", "status": "done" }
-```
-- `202` when job is queued or already processing:
-```json
-{ "ok": true, "video_id": "VIDEO_ID", "target_language": "ru", "status": "processing" }
-```
-- `404` when subtitles are missing:
-```json
-{ "detail": "Subtitles not found" }
-```
-
----
-
-### `GET /api/subtitles/{video_id}/translation/status`
-Check translation status for a video.
-
-Query params
-- `target_language` (optional, default `ru`)
-
-Responses
-- `200` when status exists:
-```json
-{ "ok": true, "video_id": "VIDEO_ID", "target_language": "ru", "status": "processing" }
-```
-```json
-{ "ok": true, "video_id": "VIDEO_ID", "target_language": "ru", "status": "done" }
-```
-```json
-{ "ok": true, "video_id": "VIDEO_ID", "target_language": "ru", "status": "error" }
-```
-- `200` when nothing found:
-```json
-{ "ok": false, "video_id": "VIDEO_ID", "target_language": "ru", "status": "not_found" }
-```
-
----
-
-### `GET /api/subtitles/{video_id}/translation`
-Fetch translated subtitles.
-
-Query params
-- `target_language` (optional, default `ru`)
-
-Responses
-- `200` when cached translation is ready:
-```json
-{
-  "ok": true,
-  "video_id": "VIDEO_ID",
-  "target_language": "ru",
-  "translation": {
-    "text": "Полный текст перевода...",
-    "language": "ru",
-    "segments": [
-      { "id": 0, "start": 0.0, "end": 2.34, "text": "Привет мир" }
-    ],
-    "meta": {
-      "engine": "argos-translate",
-      "source_language": "en",
-      "target_language": "ru",
-      "mode": "tagged"
-    }
-  }
-}
-```
-- `202` when still processing:
-```json
-{ "ok": true, "video_id": "VIDEO_ID", "target_language": "ru", "detail": "processing" }
-```
-- `404` when translation not found:
-```json
-{ "detail": "Translation not found" }
-```
-
----
 
 ## Typical frontend flow
 1) `POST /api/subtitles` with `url`.
 2) Poll `GET /api/subtitles/{video_id}/status` until `status=done`.
 3) Fetch result via `GET /api/subtitles/{video_id}`.
+
+## Update checks (mobile client)
+- On app resume (from background), call `GET /api/updates/latest`.
+- Always make a fresh API request (no client-side caching or time throttling).
+- If response is `critical` (or `force=true`), block usage until updated.
+- If response is `info`, show a dismissible banner and send `POST /api/updates/ack` on close.
 
 ## Environment settings that affect API
 - `DOWNLOADING_EXPIRE_TIME` (seconds, default 3600): TTL for status/processing keys; cached subtitles are stored for `2x` this time.
@@ -278,6 +238,9 @@ Responses
 - `VIDEO_CATALOG_COLLECTION` (default `videos`): MongoDB collection used as the video catalog source for `GET /api/videos`.
 - `VIDEO_CATALOG_CACHE_KEY` (default `videos:all`): Redis key for the cached video list.
 - `VIDEO_CATALOG_CACHE_TTL_SEC` (default `600`): TTL for video list cache; background refresher runs on this interval.
+- `WEB_CONCURRENCY` (default `2`): number of Uvicorn worker processes (Docker).
+- `YTDLP_MAX_CONCURRENT` (default `2`): max parallel yt-dlp operations.
+- `RQ_QUEUE_NAME` (default `subtitles`): RQ queue for subtitle jobs.
 
 ## Errors
 Common errors:

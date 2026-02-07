@@ -29,7 +29,7 @@ async def log_user_activity(request_body: Dict[str, Any], fastapi_request: Reque
     if db is None:
         raise HTTPException(status_code=503, detail="MongoDB unavailable")
 
-    user_id = request_body.get("user_id") or ensure_common_user()
+    user_id = request_body.get("user_id") or await ensure_common_user()
     now = datetime.now(timezone.utc)
 
     doc = {
@@ -46,7 +46,7 @@ async def log_user_activity(request_body: Dict[str, Any], fastapi_request: Reque
         "meta": request_body.get("meta"),
     }
     doc = _drop_none(doc)
-    result = db.user_activity_log.insert_one(doc)
+    result = await db.user_activity_log.insert_one(doc)
 
     return JSONResponse(status_code=200, content={"ok": True, "id": str(result.inserted_id)})
 
@@ -57,7 +57,7 @@ async def upsert_watch_progress(request_body: Dict[str, Any]) -> JSONResponse:
     if db is None:
         raise HTTPException(status_code=503, detail="MongoDB unavailable")
 
-    user_id = request_body.get("user_id") or ensure_common_user()
+    user_id = request_body.get("user_id") or await ensure_common_user()
     video_id = request_body.get("video_id")
     if not video_id:
         raise HTTPException(status_code=400, detail="video_id is required")
@@ -74,7 +74,7 @@ async def upsert_watch_progress(request_body: Dict[str, Any]) -> JSONResponse:
     }
     progress_doc = _drop_none(progress_doc)
 
-    db.watch_progress.update_one(
+    await db.watch_progress.update_one(
         {"user_id": user_id, "video_id": video_id},
         {"$set": progress_doc, "$setOnInsert": {"user_id": user_id, "video_id": video_id}},
         upsert=True,
@@ -94,7 +94,7 @@ async def upsert_watch_progress(request_body: Dict[str, Any]) -> JSONResponse:
     }
     watched_doc = _drop_none(watched_doc)
 
-    db.user_watched_videos.update_one(
+    await db.user_watched_videos.update_one(
         {"user_id": user_id, "video_id": video_id},
         {"$set": watched_doc, "$setOnInsert": {"user_id": user_id, "video_id": video_id}},
         upsert=True,
@@ -109,10 +109,10 @@ async def get_watch_progress(video_id: str, user_id: Optional[str] = None) -> JS
     if db is None:
         raise HTTPException(status_code=503, detail="MongoDB unavailable")
 
-    user_id = user_id or ensure_common_user()
+    user_id = user_id or await ensure_common_user()
 
-    progress = db.watch_progress.find_one({"user_id": user_id, "video_id": video_id})
-    watched = db.user_watched_videos.find_one({"user_id": user_id, "video_id": video_id})
+    progress = await db.watch_progress.find_one({"user_id": user_id, "video_id": video_id})
+    watched = await db.user_watched_videos.find_one({"user_id": user_id, "video_id": video_id})
 
     if not progress and not watched:
         raise HTTPException(status_code=404, detail="Progress not found")

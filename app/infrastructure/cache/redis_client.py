@@ -5,7 +5,7 @@ import time
 from typing import Any, Dict, Optional, Tuple
 
 from dotenv import load_dotenv
-from redis import Redis
+from redis.asyncio import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 # Загружаем переменные окружения при импорте модуля
@@ -98,8 +98,37 @@ class InMemoryRedis:
 _in_memory_client = InMemoryRedis()
 
 
-class ResilientRedis:
-    def __init__(self, redis_client: Redis, fallback_client: InMemoryRedis) -> None:
+class AsyncInMemoryRedis:
+    def __init__(self, backend: InMemoryRedis) -> None:
+        self._backend = backend
+
+    async def ping(self) -> bool:
+        return self._backend.ping()
+
+    async def get(self, name: str) -> Optional[str]:
+        return self._backend.get(name)
+
+    async def set(self, name: str, value: Any, ex: Optional[int] = None, px: Optional[int] = None, nx: bool = False) -> bool:
+        return self._backend.set(name, value, ex=ex, px=px, nx=nx)
+
+    async def setex(self, name: str, time_seconds: int, value: Any) -> bool:
+        return self._backend.setex(name, time_seconds, value)
+
+    async def delete(self, *names: str) -> int:
+        return self._backend.delete(*names)
+
+    async def exists(self, name: str) -> int:
+        return self._backend.exists(name)
+
+    async def incr(self, name: str) -> int:
+        return self._backend.incr(name)
+
+    async def ttl(self, name: str) -> int:
+        return self._backend.ttl(name)
+
+
+class AsyncResilientRedis:
+    def __init__(self, redis_client: Redis, fallback_client: AsyncInMemoryRedis) -> None:
         self._redis = redis_client
         self._fallback = fallback_client
         self._use_fallback = False
@@ -109,44 +138,44 @@ class ResilientRedis:
             log.warning("Redis unavailable; falling back to in-memory cache.")
             self._use_fallback = True
 
-    def _call(self, method: str, *args: Any, **kwargs: Any) -> Any:
+    async def _call(self, method: str, *args: Any, **kwargs: Any) -> Any:
         if self._use_fallback:
-            return getattr(self._fallback, method)(*args, **kwargs)
+            return await getattr(self._fallback, method)(*args, **kwargs)
         try:
-            return getattr(self._redis, method)(*args, **kwargs)
+            return await getattr(self._redis, method)(*args, **kwargs)
         except RedisConnectionError:
             self._switch_to_fallback()
-            return getattr(self._fallback, method)(*args, **kwargs)
+            return await getattr(self._fallback, method)(*args, **kwargs)
 
-    def ping(self) -> bool:
-        return bool(self._call("ping"))
+    async def ping(self) -> bool:
+        return bool(await self._call("ping"))
 
-    def get(self, name: str) -> Optional[str]:
-        return self._call("get", name)
+    async def get(self, name: str) -> Optional[str]:
+        return await self._call("get", name)
 
-    def set(self, name: str, value: Any, ex: Optional[int] = None, px: Optional[int] = None, nx: bool = False) -> bool:
-        return bool(self._call("set", name, value, ex=ex, px=px, nx=nx))
+    async def set(self, name: str, value: Any, ex: Optional[int] = None, px: Optional[int] = None, nx: bool = False) -> bool:
+        return bool(await self._call("set", name, value, ex=ex, px=px, nx=nx))
 
-    def setex(self, name: str, time_seconds: int, value: Any) -> bool:
-        return bool(self._call("setex", name, time_seconds, value))
+    async def setex(self, name: str, time_seconds: int, value: Any) -> bool:
+        return bool(await self._call("setex", name, time_seconds, value))
 
-    def delete(self, *names: str) -> int:
-        return int(self._call("delete", *names))
+    async def delete(self, *names: str) -> int:
+        return int(await self._call("delete", *names))
 
-    def exists(self, name: str) -> int:
-        return int(self._call("exists", name))
+    async def exists(self, name: str) -> int:
+        return int(await self._call("exists", name))
 
-    def incr(self, name: str) -> int:
-        return int(self._call("incr", name))
+    async def incr(self, name: str) -> int:
+        return int(await self._call("incr", name))
 
-    def ttl(self, name: str) -> int:
-        return int(self._call("ttl", name))
-
-
-_client_instance: Optional[ResilientRedis] = None
+    async def ttl(self, name: str) -> int:
+        return int(await self._call("ttl", name))
 
 
-def get_redis_client() -> ResilientRedis:
+_client_instance: Optional[AsyncResilientRedis] = None
+
+
+def get_redis_client() -> AsyncResilientRedis:
     global _client_instance
     if _client_instance is None:
         redis_client = Redis(
@@ -156,9 +185,5 @@ def get_redis_client() -> ResilientRedis:
             socket_connect_timeout=5,
             decode_responses=True,
         )
-        _client_instance = ResilientRedis(redis_client, _in_memory_client)
-        try:
-            _client_instance.ping()
-        except RedisConnectionError:
-            _client_instance._switch_to_fallback()
+        _client_instance = AsyncResilientRedis(redis_client, AsyncInMemoryRedis(_in_memory_client))
     return _client_instance

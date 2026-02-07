@@ -39,6 +39,37 @@ services:
     networks:
       - linguada-net
 
+  worker:
+    build: .
+    container_name: linguada-worker
+    command: ["rq", "worker", "subtitles", "--url", "redis://redis:6379/0"]
+    env_file:
+      - .env
+    environment:
+      - LOG_LEVEL=info
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - MONGO_URI=mongodb://admin:admin@mongodb:27017/linguada?authSource=admin
+      - MONGO_DB=linguada
+      - MAX_AUDIO_DURATION=1800
+      - AUDIO_SAMPLE_RATE=16000
+      - HF_HOME=/app/.cache/huggingface
+      - TRANSFORMERS_CACHE=/app/.cache/huggingface
+      - YTDLP_COOKIES=/app/cookies/youtube.txt
+      - RQ_QUEUE_NAME=subtitles
+    volumes:
+      - ./linguada_models_cache:/root/.cache/linguada
+      - ./cookies:/app/cookies:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - linguada-net
+
   redis:
     image: redis:7-alpine
     container_name: linguada-redis

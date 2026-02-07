@@ -13,7 +13,7 @@ log = logging.getLogger("app.videos")
 async def list_available_videos() -> JSONResponse:
     use_case = get_video_catalog_use_case()
     try:
-        videos, source = use_case.execute()
+        videos, source = await use_case.execute()
     except Exception:
         log.exception("Failed to load videos from Berios")
         raise HTTPException(status_code=503, detail="MongoDB unavailable")

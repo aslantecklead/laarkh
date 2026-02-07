@@ -204,6 +204,27 @@ duration_sec, uploader).
 - last_watched_at
 - total_watch_time_sec
 
+### app_updates
+- _id
+- version
+- min_app_version
+- max_app_version
+- message
+- severity (info|critical)
+- telegram_url
+- is_active
+- force (bool)
+- starts_at
+- ends_at
+- created_at
+
+### update_ack
+- _id
+- update_id (ref app_updates._id)
+- device_id
+- user_id (optional)
+- acked_at
+
 ### user_saved_words
 - _id
 - user_id

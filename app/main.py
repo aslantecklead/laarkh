@@ -1,11 +1,14 @@
 # app/main.py
 from fastapi import FastAPI
+import asyncio
 from app.infrastructure.asr.factory import initialize_asr
 from app.infrastructure.cache.video_catalog_refresher import start_video_catalog_refresher
 from app.api.subtitles import router as subtitles_router
 from app.api.cookies import router as cookies_router
 from app.api.activity import router as activity_router
 from app.api.videos import router as videos_router
+from app.api.updates import router as updates_router
+from app.infrastructure.db.indexes import ensure_indexes
 import logging
 import threading
 
@@ -22,6 +25,7 @@ app.include_router(subtitles_router)
 app.include_router(cookies_router)
 app.include_router(activity_router)
 app.include_router(videos_router)
+app.include_router(updates_router)
 
 
 @app.on_event("startup")
@@ -47,6 +51,12 @@ async def startup_event():
         logger.info("Video catalog cache refresher started")
     except Exception as e:
         logger.error(f"Failed to start video catalog cache refresher: {e}")
+
+    try:
+        asyncio.create_task(ensure_indexes())
+        logger.info("MongoDB indexes ensured")
+    except Exception as e:
+        logger.error(f"Failed to ensure MongoDB indexes: {e}")
 
 
 @app.get("/")

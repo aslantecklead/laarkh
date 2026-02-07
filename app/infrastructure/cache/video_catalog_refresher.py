@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import threading
 import time
@@ -15,7 +16,7 @@ def start_video_catalog_refresher(interval_sec: int | None = None) -> threading.
     def _loop() -> None:
         while True:
             try:
-                videos, source = use_case.execute(force_refresh=True)
+                videos, source = asyncio.run(use_case.execute(force_refresh=True))
                 log.info("Video catalog cache refreshed items=%d source=%s", len(videos), source)
             except Exception:
                 log.exception("Video catalog cache refresh failed")

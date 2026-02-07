@@ -10,8 +10,8 @@ class RedisVideoCatalogCache(VideoCatalogCache):
         self._redis = get_redis_client()
         self._key = key
 
-    def get_videos(self) -> Optional[List[Dict[str, Any]]]:
-        cached = self._redis.get(self._key)
+    async def get_videos(self) -> Optional[List[Dict[str, Any]]]:
+        cached = await self._redis.get(self._key)
         if not cached:
             return None
         if isinstance(cached, bytes):
@@ -21,6 +21,6 @@ class RedisVideoCatalogCache(VideoCatalogCache):
         except Exception:
             return None
 
-    def set_videos(self, videos: List[Dict[str, Any]], ttl_sec: int) -> None:
+    async def set_videos(self, videos: List[Dict[str, Any]], ttl_sec: int) -> None:
         payload = json.dumps(videos, ensure_ascii=False)
-        self._redis.setex(self._key, ttl_sec, payload)
+        await self._redis.setex(self._key, ttl_sec, payload)
