@@ -1,29 +1,30 @@
 services:
   app:
     build: .
+    image: linguada-app
     container_name: linguada-app
     ports:
       - "8000:8000"
     env_file:
       - .env
     environment:
-      - HOST=0.0.0.0
-      - PORT=8000
-      - LOG_LEVEL=info
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
-      - MONGO_URI=mongodb://admin:admin@mongodb:27017/linguada?authSource=admin
-      - MONGO_DB=linguada
-      - MAX_AUDIO_DURATION=1800
-      - AUDIO_SAMPLE_RATE=16000
-      - HF_HOME=/app/.cache/huggingface
-      - TRANSFORMERS_CACHE=/app/.cache/huggingface
-      - YTDLP_COOKIES=/app/cookies/youtube.txt
+      HOST: 0.0.0.0
+      PORT: 8000
+      WEB_CONCURRENCY: 1
+      LOG_LEVEL: info
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      MONGO_URI: mongodb://admin:admin@mongodb:27017/linguada?authSource=admin
+      MONGO_DB: linguada
+      MAX_AUDIO_DURATION: 1800
+      AUDIO_SAMPLE_RATE: 16000
+      HF_HOME: /app/.cache/huggingface
+      TRANSFORMERS_CACHE: /app/.cache/huggingface
+      YTDLP_COOKIES: /app/cookies/youtube.txt
     volumes:
       - ./linguada_models_cache:/root/.cache/linguada
       - ./cookies:/app/cookies:ro
-      - redis_data:/data
     depends_on:
       redis:
         condition: service_healthy
@@ -31,7 +32,7 @@ services:
         condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; r = requests.get('http://localhost:8000/health', timeout=5); exit(0 if r.status_code == 200 else 1)"]
-      interval: 30s
+      interval: 120s
       timeout: 10s
       retries: 3
       start_period: 30s
@@ -40,24 +41,24 @@ services:
       - linguada-net
 
   worker:
-    build: .
+    image: linguada-app
     container_name: linguada-worker
     command: ["rq", "worker", "subtitles", "--url", "redis://redis:6379/0"]
     env_file:
       - .env
     environment:
-      - LOG_LEVEL=info
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
-      - MONGO_URI=mongodb://admin:admin@mongodb:27017/linguada?authSource=admin
-      - MONGO_DB=linguada
-      - MAX_AUDIO_DURATION=1800
-      - AUDIO_SAMPLE_RATE=16000
-      - HF_HOME=/app/.cache/huggingface
-      - TRANSFORMERS_CACHE=/app/.cache/huggingface
-      - YTDLP_COOKIES=/app/cookies/youtube.txt
-      - RQ_QUEUE_NAME=subtitles
+      LOG_LEVEL: info
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      MONGO_URI: mongodb://admin:admin@mongodb:27017/linguada?authSource=admin
+      MONGO_DB: linguada
+      MAX_AUDIO_DURATION: 1800
+      AUDIO_SAMPLE_RATE: 16000
+      HF_HOME: /app/.cache/huggingface
+      TRANSFORMERS_CACHE: /app/.cache/huggingface
+      YTDLP_COOKIES: /app/cookies/youtube.txt
+      RQ_QUEUE_NAME: subtitles
     volumes:
       - ./linguada_models_cache:/root/.cache/linguada
       - ./cookies:/app/cookies:ro
@@ -100,9 +101,9 @@ services:
     ports:
       - "27017:27017"
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=admin
-      - MONGO_INITDB_DATABASE=linguada
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+      MONGO_INITDB_DATABASE: linguada
     volumes:
       - mongo_data:/data/db
       - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro

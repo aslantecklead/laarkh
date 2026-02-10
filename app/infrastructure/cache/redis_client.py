@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import threading
@@ -172,12 +173,21 @@ class AsyncResilientRedis:
         return int(await self._call("ttl", name))
 
 
-_client_instance: Optional[AsyncResilientRedis] = None
+_client_instances: Dict[int, AsyncResilientRedis] = {}
+
+
+def _loop_key() -> int:
+    try:
+        loop = asyncio.get_running_loop()
+        return id(loop)
+    except RuntimeError:
+        return -1
 
 
 def get_redis_client() -> AsyncResilientRedis:
-    global _client_instance
-    if _client_instance is None:
+    key = _loop_key()
+    client = _client_instances.get(key)
+    if client is None:
         redis_client = Redis(
             host=os.getenv("REDIS_HOST", "localhost"),
             port=int(os.getenv("REDIS_PORT", 6379)),
@@ -185,5 +195,6 @@ def get_redis_client() -> AsyncResilientRedis:
             socket_connect_timeout=5,
             decode_responses=True,
         )
-        _client_instance = AsyncResilientRedis(redis_client, AsyncInMemoryRedis(_in_memory_client))
-    return _client_instance
+        client = AsyncResilientRedis(redis_client, AsyncInMemoryRedis(_in_memory_client))
+        _client_instances[key] = client
+    return client

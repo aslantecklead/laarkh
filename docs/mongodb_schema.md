@@ -2,10 +2,14 @@
 
 > Draft schema for user monitoring, subtitles, and English-learning progress.
 
+## Session storage (Redis)
+Active sessions are stored in Redis (key prefix `session:`) with TTL (`SESSION_TTL_SEC`).
+MongoDB does not persist sessions in the current setup.
+
 ## Collections
 
 ### users
-- _id
+- _id (device_id for anonymous users)
 - username
 - email | provider_id
 - created_at
@@ -22,7 +26,7 @@
 - ip (last)
 
 #### MVP note
-- Users remain distinct in schema; MVP logic may temporarily use a single shared user_id.
+- For anonymous usage, use `device_id` as the user `_id` so each device is a distinct user.
 
 ### videos
 - _id

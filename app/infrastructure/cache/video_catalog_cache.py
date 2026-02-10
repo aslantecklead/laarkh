@@ -7,11 +7,11 @@ from app.infrastructure.cache.redis_client import get_redis_client
 
 class RedisVideoCatalogCache(VideoCatalogCache):
     def __init__(self, key: str = "videos:berios:all") -> None:
-        self._redis = get_redis_client()
         self._key = key
 
     async def get_videos(self) -> Optional[List[Dict[str, Any]]]:
-        cached = await self._redis.get(self._key)
+        redis = get_redis_client()
+        cached = await redis.get(self._key)
         if not cached:
             return None
         if isinstance(cached, bytes):
@@ -23,4 +23,5 @@ class RedisVideoCatalogCache(VideoCatalogCache):
 
     async def set_videos(self, videos: List[Dict[str, Any]], ttl_sec: int) -> None:
         payload = json.dumps(videos, ensure_ascii=False)
-        await self._redis.setex(self._key, ttl_sec, payload)
+        redis = get_redis_client()
+        await redis.setex(self._key, ttl_sec, payload)

@@ -107,10 +107,14 @@ Enqueue subtitle generation for a YouTube video.
 Request body (JSON)
 ```json
 {
+  "device_id": "device-123",
+  "session_id": "session-abc",
   "url": "https://www.youtube.com/watch?v=VIDEO_ID",
   "video_id": "VIDEO_ID"
 }
 ```
+- `device_id` (required if no session_id): anonymous device identifier (used as user_id).
+- `session_id` (optional): server session id from `POST /api/session/start`.
 - `url` (required): YouTube URL.
 - `video_id` (optional): If omitted, the API will try to extract it from `url`.
 
@@ -217,12 +221,246 @@ Responses
 { "detail": "Subtitles not found" }
 ```
 
+---
+
+### `POST /api/session/start`
+Create a server session (anonymous by device).
+
+Request body (JSON)
+```json
+{
+  "device_id": "device-123",
+  "app_version": "1.0.0",
+  "platform": "android",
+  "country": "US",
+  "locale": "en-US",
+  "timezone": "America/Los_Angeles"
+}
+```
+- `device_id` (required): anonymous device identifier.
+
+Response `200`
+```json
+{ "ok": true, "session_id": "session-abc", "user_id": "device-123", "device_id": "device-123" }
+```
+
+Notes
+- Sessions are stored in Redis under `session:{session_id}` with TTL (`SESSION_TTL_SEC`).
+
+---
+
+### `POST /api/session/heartbeat`
+Update session last-seen time.
+
+Request body (JSON)
+```json
+{
+  "session_id": "session-abc",
+  "device_id": "device-123"
+}
+```
+- `session_id` (required).
+
+Response `200`
+```json
+{ "ok": true }
+```
+
+---
+
+### `POST /api/session/end`
+End session.
+
+Request body (JSON)
+```json
+{
+  "session_id": "session-abc"
+}
+```
+- `session_id` (required).
+
+Response `200`
+```json
+{ "ok": true }
+```
+
+---
+
+### `POST /api/user-activity`
+Log a user activity event (anonymous by device).
+
+Request body (JSON)
+```json
+{
+  "device_id": "device-123",
+  "event": "open_app",
+  "session_id": "session-abc",
+  "video_id": "optional",
+  "app_version": "1.0.0",
+  "platform": "ios",
+  "country": "US",
+  "locale": "en-US",
+  "timezone": "America/Los_Angeles",
+  "meta": {}
+}
+```
+- `device_id` (required if no session_id): anonymous device identifier (used as user_id).
+- `session_id` (optional): server session id from `POST /api/session/start`.
+- `event` (required): event name.
+
+Response `200`
+```json
+{ "ok": true, "id": "activity_id" }
+```
+
+---
+
+### `GET /api/user-activity`
+List user activity events.
+
+Query params
+- `device_id` (required if no session_id): anonymous device identifier.
+- `session_id` (optional): server session id from `POST /api/session/start`.
+- `event` (optional): filter by event name.
+- `video_id` (optional).
+- `since` (optional): ISO 8601 datetime (UTC if no timezone).
+- `limit` (optional, default 100, max 500).
+
+Response `200`
+```json
+{
+  "ok": true,
+  "count": 2,
+  "items": [
+    {
+      "id": "...",
+      "user_id": "device-123",
+      "event": "open_app",
+      "session_id": "session-abc",
+      "created_at": "2026-02-10T00:00:00+00:00"
+    }
+  ]
+}
+```
+
+---
+
+### `GET /api/stats/overview`
+Get summary counters for analytics collections.
+
+Query params
+- `exclude_test` (optional, default `true`): exclude users marked as test.
+- `include_public` (optional, default `true`): keep shared `public` user in stats.
+
+Response `200`
+```json
+{
+  "ok": true,
+  "exclude_test": true,
+  "include_public": true,
+  "excluded_user_ids": ["local-dev"],
+  "totals": {
+    "users": 12,
+    "user_stats": 12,
+    "activity_events": 101,
+    "watched_videos": 17,
+    "subtitle_jobs": 45
+  }
+}
+```
+
+---
+
+### `POST /api/watch/progress`
+Upsert watch progress for a video (anonymous by device).
+
+Request body (JSON)
+```json
+{
+  "device_id": "device-123",
+  "session_id": "session-abc",
+  "video_id": "VIDEO_ID",
+  "last_timecode_sec": 123.4,
+  "status": "in_progress",
+  "watch_time_sec": 120.0
+}
+```
+- `device_id` (required if no session_id): anonymous device identifier (used as user_id).
+- `session_id` (optional): server session id from `POST /api/session/start`.
+- `user_id` (optional): authenticated user id; overrides anonymous mapping when provided.
+- `video_id` (required).
+- `last_timecode_sec` (optional): last playback position (seconds) used for resume.
+
+Response `200`
+```json
+{ "ok": true }
+```
+
+---
+
+### `GET /api/watch/progress/{video_id}`
+Fetch watch progress for a video.
+
+Query params
+- `device_id` (required if no session_id): anonymous device identifier (used as user_id).
+- `session_id` (optional): server session id from `POST /api/session/start`.
+- `user_id` (optional): authenticated user id.
+
+Response `200`
+```json
+{
+  "ok": true,
+  "video_id": "VIDEO_ID",
+  "user_id": "device-123",
+  "watch_progress": {},
+  "user_watched_videos": {}
+}
+```
+
+---
+
+### `GET /api/watch/progress`
+List watch progress entries for a user (for "Continue watching").
+
+Query params
+- `device_id` (required if no session_id): anonymous device identifier (used as user_id).
+- `session_id` (optional): server session id from `POST /api/session/start`.
+- `user_id` (optional): authenticated user id.
+- `status` (optional): filter by progress status (`in_progress`, `completed`, etc.).
+- `limit` (optional, default `100`, max `500`): max number of records.
+
+Response `200`
+```json
+{
+  "ok": true,
+  "user_id": "device-123",
+  "count": 2,
+  "items": [
+    {
+      "user_id": "device-123",
+      "video_id": "VIDEO_ID_1",
+      "last_timecode_sec": 123.4,
+      "last_viewed_at": "2026-02-10T12:00:00+00:00",
+      "status": "in_progress"
+    },
+    {
+      "user_id": "device-123",
+      "video_id": "VIDEO_ID_2",
+      "last_timecode_sec": 45.0,
+      "last_viewed_at": "2026-02-09T09:00:00+00:00",
+      "status": "completed"
+    }
+  ]
+}
+```
+
 
 
 ## Typical frontend flow
-1) `POST /api/subtitles` with `url`.
-2) Poll `GET /api/subtitles/{video_id}/status` until `status=done`.
-3) Fetch result via `GET /api/subtitles/{video_id}`.
+1) `POST /api/session/start` with `device_id` (recommended).
+2) `POST /api/subtitles` with `url` and `device_id` or `session_id`.
+3) Poll `GET /api/subtitles/{video_id}/status` until `status=done`.
+4) Fetch result via `GET /api/subtitles/{video_id}`.
 
 ## Update checks (mobile client)
 - On app resume (from background), call `GET /api/updates/latest`.
@@ -238,6 +476,7 @@ Responses
 - `VIDEO_CATALOG_COLLECTION` (default `videos`): MongoDB collection used as the video catalog source for `GET /api/videos`.
 - `VIDEO_CATALOG_CACHE_KEY` (default `videos:all`): Redis key for the cached video list.
 - `VIDEO_CATALOG_CACHE_TTL_SEC` (default `600`): TTL for video list cache; background refresher runs on this interval.
+- `SESSION_TTL_SEC` (default `604800`): TTL for server sessions stored in Redis.
 - `WEB_CONCURRENCY` (default `2`): number of Uvicorn worker processes (Docker).
 - `YTDLP_MAX_CONCURRENT` (default `2`): max parallel yt-dlp operations.
 - `RQ_QUEUE_NAME` (default `subtitles`): RQ queue for subtitle jobs.

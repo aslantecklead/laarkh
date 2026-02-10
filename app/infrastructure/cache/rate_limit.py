@@ -7,9 +7,6 @@ from starlette.responses import JSONResponse
 from redis.exceptions import ConnectionError as RedisConnectionError
 from app.infrastructure.cache.redis_client import get_redis_client
 
-# Получаем клиент Redis
-redis_client = get_redis_client()
-
 # In-memory fallback for local/dev when Redis is unavailable
 _memory_limits = {}
 _memory_lock = threading.Lock()
@@ -67,6 +64,7 @@ def rate_limit(max_requests=None, window=None, by_ip=True):
                 key = f"rate_limit:{video_id}"
 
             try:
+                redis_client = get_redis_client()
                 current = await redis_client.get(key)
 
                 if current is None:

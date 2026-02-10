@@ -12,7 +12,12 @@ from fastapi.responses import JSONResponse
 from app.application.subtitles_job import run_subtitles_job
 from app.infrastructure.cache.rate_limit import rate_limit
 from app.infrastructure.cache.redis_client import get_redis_client
-from app.infrastructure.db.mongo_client import get_mongo_db, ensure_common_user
+from app.infrastructure.db.mongo_client import (
+    IdentityResolutionError,
+    ensure_user,
+    get_mongo_db,
+    resolve_identity,
+)
 from app.infrastructure.queue.rq_client import enqueue_subtitle_job
 
 
@@ -62,7 +67,18 @@ async def enqueue_subtitles(
     fastapi_request: Request,
 ) -> JSONResponse:
     redis_client = get_redis_client()
-    user_id = await ensure_common_user()
+    try:
+        identity = await resolve_identity(
+            user_id=request_body.get("user_id"),
+            device_id=request_body.get("device_id"),
+            session_id=request_body.get("session_id"),
+            touch_session=True,
+        )
+    except IdentityResolutionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    user_id = identity["user_id"]
+    device_id = identity["device_id"]
+    session_id = identity.get("session_id")
 
     url = request_body.get("url")
     video_id = request_body.get("video_id")
@@ -75,6 +91,22 @@ async def enqueue_subtitles(
 
     if not video_id:
         raise HTTPException(status_code=400, detail="Could not extract video_id from url")
+
+    db = _mongo_db()
+    if db is not None:
+        await ensure_user(
+            user_id=user_id,
+            device_id=device_id,
+            meta={
+                "session_id": session_id or request_body.get("session_id"),
+                "locale": request_body.get("locale"),
+                "timezone": request_body.get("timezone"),
+                "app_version": request_body.get("app_version"),
+                "platform": request_body.get("platform"),
+                "country": request_body.get("country"),
+                "ip": getattr(fastapi_request.client, "host", None),
+            },
+        )
 
     expire_time = int(os.getenv("DOWNLOADING_EXPIRE_TIME", 3600))
     status_key = f"status:{video_id}"
@@ -97,7 +129,6 @@ async def enqueue_subtitles(
         )
 
     # 1.1) если есть в MongoDB — прогреем кэш и вернём done
-    db = _mongo_db()
     if db is not None:
         doc = await db.subtitles.find_one({"video_id": video_id}, sort=[("generated_at", -1)])
         if doc:
@@ -126,7 +157,6 @@ async def enqueue_subtitles(
     await redis_client.setex(status_key, expire_time, "processing")
     job_id = __import__("uuid").uuid4().hex
 
-    db = _mongo_db()
     if db is not None:
         now = datetime.now(timezone.utc)
         await db.subtitle_jobs.insert_one(

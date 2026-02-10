@@ -71,6 +71,24 @@ If someone really needs `openai-whisper==20231106`, it must be done in a **separ
 
 ---
 
+## Runtime notes
+
+### Services
+- `app` (FastAPI API server)
+- `worker` (RQ worker for subtitle jobs)
+- `redis`
+- `mongodb`
+
+### Subtitles queue
+Subtitle generation is enqueued to Redis/RQ. The `worker` service must be running to process jobs.
+
+### Environment variables
+- `WEB_CONCURRENCY` (default `2`): number of Uvicorn worker processes (Docker).
+- `YTDLP_MAX_CONCURRENT` (default `2`): max parallel yt-dlp operations.
+- `RQ_QUEUE_NAME` (default `subtitles`): RQ queue for subtitle jobs.
+
+---
+
 If хочешь, следующим шагом могу:
 
 * вписать это в твой существующий README (с нужным заголовком),

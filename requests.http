@@ -1,11 +1,23 @@
 ### 2️⃣ Сохраняем video_id в переменную (для VS Code REST Client)
 @video_id = IOuG6WSh_-g
+@device_id = device-123
+
+### 0️⃣ POST — старт сессии
+POST http://localhost:8000/api/session/start
+Content-Type: application/json
+
+{
+  "device_id": "{{device_id}}",
+  "platform": "android",
+  "app_version": "1.0.0"
+}
 
 ### 1️⃣ POST — запустить генерацию субтитров
 POST http://localhost:8000/api/subtitles
 Content-Type: application/json
 
 {
+  "device_id": "{{device_id}}",
   "url": "https://www.youtube.com/watch?v={{video_id}}"
 }
 
