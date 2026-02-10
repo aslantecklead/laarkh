@@ -234,7 +234,7 @@ async def upsert_watch_progress(request_body: Dict[str, Any]) -> JSONResponse:
 
     await db.watch_progress.update_one(
         {"user_id": user_id, "video_id": video_id},
-        {"$set": progress_doc, "$setOnInsert": {"user_id": user_id, "video_id": video_id}},
+        {"$set": progress_doc},
         upsert=True,
     )
 
@@ -254,7 +254,7 @@ async def upsert_watch_progress(request_body: Dict[str, Any]) -> JSONResponse:
 
     await db.user_watched_videos.update_one(
         {"user_id": user_id, "video_id": video_id},
-        {"$set": watched_doc, "$setOnInsert": {"user_id": user_id, "video_id": video_id}},
+        {"$set": watched_doc},
         upsert=True,
     )
 
@@ -289,10 +289,8 @@ async def get_watch_progress(
     if not progress and not watched:
         raise HTTPException(status_code=404, detail="Progress not found")
 
-    if progress and "_id" in progress:
-        progress["_id"] = str(progress["_id"])
-    if watched and "_id" in watched:
-        watched["_id"] = str(watched["_id"])
+    progress_payload = normalize_mongo_doc(progress) if progress else None
+    watched_payload = normalize_mongo_doc(watched) if watched else None
 
     return JSONResponse(
         status_code=200,
@@ -300,8 +298,8 @@ async def get_watch_progress(
             "ok": True,
             "video_id": video_id,
             "user_id": user_id,
-            "watch_progress": progress,
-            "user_watched_videos": watched,
+            "watch_progress": progress_payload,
+            "user_watched_videos": watched_payload,
         },
     )
 
